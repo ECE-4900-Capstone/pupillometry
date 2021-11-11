@@ -4,16 +4,37 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy import signal
 import csv
+import os
+
+# Get Video input filename
+videoFilename = "C:\\Users\Owner\PycharmProjects\Capstone\Recordings\Zach_11_9\Zach_control1_11_9.avi" #input("Enter Video Filename:")
+
+# Get csv filename from user
+CSVfileName = os.path.basename(videoFilename).split('.')[0] + ".csv" #input("Enter CSV Filename:")
 
 # Load Pre-Trained Model
 eye_cascade = cv2.CascadeClassifier('C:\\Users\Owner\PycharmProjects\Capstone\pyPro\Capstone\haarcascae_eye.xml')
 
 # Load recording
-cap = cv2.VideoCapture("C:\\Users\Owner\PycharmProjects\Capstone\Recordings\Zach_control1_11_9.avi")
+cap = cv2.VideoCapture(videoFilename)
 
 # USER PARAMETERS
-MaxRadius = 200
+n = 2  # 2 - the larger n is, the smoother curve will be
+NumToExclude = 1 # 1 - Number of zero points to exclude after filtering
 
+eyeDetect_scaleFactor = 1.05 # 1.05 - higher = more cpu and more accurate
+eyeDetect_minSize = 7 # 7
+
+# Line 87-88, can decide whether using adaptive filtering or not. Each better in some cases
+threshold_param1 = 11 # 11 - BlockSize??
+threshold_param2 = 2 # 2
+
+MinRadius = 50
+MaxRadius = 200
+houghcircle_paramA = 4 # 4
+houghcircle_paramB = 200 # 200
+houghcircle_param1 = 20 # 20
+houghcircle_param2 = 150  # 150 Accumulator threshold
 
 loopCount = 0
 diameter = []
@@ -34,7 +55,7 @@ try:
         # Use trained model to detect eye. Return dimensions/location of eye.
         # First parameter is scaleFactor - smaller = more processing. Bigger = miss faces
         # Second Parameter is minSize - Number of neighboring frames that must agree with decision. Higher = fewer detections, but higher quality
-        eyes = eye_cascade.detectMultiScale(gray, 1.05, 7) #TODO: CHanged this from 1.05, 7
+        eyes = eye_cascade.detectMultiScale(gray, eyeDetect_scaleFactor, eyeDetect_minSize) #TODO: CHanged this from 1.05, 7
 
         #If Eye detected by ML
         if (len(eyes) > 0):
@@ -64,12 +85,12 @@ try:
 
                 # Apply image contrast filtering. Adaptive filtering works better for getting rid of noise
                 # ret3, th3 = cv2.threshold(erosion, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                th3 = cv2.adaptiveThreshold(erosion, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2) #TODO: Changed this from 11, 2
+                th3 = cv2.adaptiveThreshold(erosion, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, threshold_param1, threshold_param2) #TODO: Changed this from 11, 2
                 cv2.imshow("threshold", th3)
 
                 # Find circles!! - # TODO: Decide whether circles should be placed on threashold filtering or erosion (Cropped smoothed image)
                 # circles = cv2.HoughCircles(th3, cv2.HOUGH_GRADIENT, 4, 200, param1=20, param2=150, minRadius=0, maxRadius=MaxRadius)
-                circles = cv2.HoughCircles(th3, cv2.HOUGH_GRADIENT, 4, 200, param1=20, param2=150, minRadius=0, maxRadius=MaxRadius)
+                circles = cv2.HoughCircles(th3, cv2.HOUGH_GRADIENT, houghcircle_paramA, houghcircle_paramB, param1=houghcircle_param1, param2=houghcircle_param2, minRadius=MinRadius, maxRadius=MaxRadius)
                 print("Circles", circles)
 
                 # If circles are found
@@ -78,7 +99,7 @@ try:
                     print("loop" + str(loopCount))
                     for i in circles[0, :]:
                         # Check size of radius to see if circle is reasonable
-                        if (i[2] > 0 and i[2] < MaxRadius):
+                        if (i[2] > MinRadius and i[2] < MaxRadius):
                             print(int(i[0]), int(i[1]), int(i[2]))
                             # cv2.circle(roi_color2, (int(366), int(298)), int(152), (0, 0, 255), 1)
 
@@ -95,7 +116,7 @@ try:
 
                             # Draw center point
                             cv2.circle(roi_color2, (int(i[0]), int(i[1])), 2, (0, 0, 255), 3)
-                            # cv2.imshow('erosion',erosion)
+                            cv2.imshow('erosion',erosion)
                 except Exception as e:
                     print("error in circle fitting,", e)
                     pass
@@ -132,7 +153,6 @@ except Exception as e:
     # filteredDiameter = signal.sosfilt(sos, diameter)
 
     # Filter Data
-    n = 2  # the larger n is, the smoother curve will be
     b = [1.0 / n] * n
     a = 1
     filteredDiameter = list(signal.lfilter(b, a, diameter))
@@ -140,15 +160,15 @@ except Exception as e:
     # Plot Filtered Data
     print(filteredDiameter)
     plt.figure(1)
-    plt.plot(filteredDiameter[1:])
+    plt.plot(filteredDiameter[NumToExclude:])
     plt.ylabel('pupil Diameter')
 
     # Write to CSV
-    f = open("extractedPupil.csv", 'w')
+    f = open(CSVfileName, 'w')
     writer = csv.writer(f)
     writer.writerow(["Frame", "Diameter"])
-    for i in range(len(filteredDiameter)):
-        writer.writerow([str(i), str(filteredDiameter[i])])
+    for i in range(NumToExclude, len(filteredDiameter)):
+        writer.writerow([str(i+1), str(filteredDiameter[i])])
     f.close()
 
     plt.show()
