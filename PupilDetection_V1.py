@@ -7,11 +7,11 @@ import csv
 import os
 
 # Get Video input filename
-videoFilename = "C:\\Users\Owner\PycharmProjects\Capstone\Recordings\Zach_11_9\Zach_control1_11_9.avi" #input("Enter Video Filename:")
+videoFilename = "C:\\Users\Owner\PycharmProjects\Capstone\Recordings\Zach_11_9\Zach_Easy0_11_9.avi" #input("Enter Video Filename:")
 
 # Get csv filename from user
-CSVfileName = os.path.basename(videoFilename).split('.')[0] + ".csv" #input("Enter CSV Filename:")
-
+CSVfileName = "Run0_" + os.path.basename(videoFilename).split('.')[0] + ".csv" #input("Enter CSV Filename:")
+print(CSVfileName)
 # Load Pre-Trained Model - make sure this file is in your working directory
 eye_cascade = cv2.CascadeClassifier('C:\\Users\Owner\PycharmProjects\Capstone\pyPro\Capstone\haarcascae_eye.xml')
 
@@ -21,8 +21,10 @@ cap = cv2.VideoCapture(videoFilename)
 # USER PARAMETERS
 BypassEyeDetection = False
 
-n = 3  # 2 - the larger n is, the smoother curve will be
-NumToExclude = 2 # 1 - Number of zero points to exclude after filtering
+n1 = 2  # 2 - the larger n is, the smoother curve will be
+n2 = 4
+n3 = 6
+NumToExclude = 3 # 1 - Number of zero points to exclude after filtering
 
 Bright_Contrast_Alpha = 50 # 50   # The higher both Alpha and Beta, the brighter. The further apart they are, the more contrast
 Bright_Contrast_Beta = 655 # 655
@@ -219,22 +221,37 @@ except Exception as e:
     # filteredDiameter = signal.sosfilt(sos, diameter)
 
     # Filter Data
-    b = [1.0 / n] * n
+    b1 = [1.0 / n1] * n1
+    b2 = [1.0 / n2] * n2
+    b3 = [1.0 / n3] * n3
     a = 1
-    filteredDiameter = list(signal.lfilter(b, a, diameter))
+    filteredDiameter1 = list(signal.lfilter(b1, a, diameter))
+    filteredDiameter2 = list(signal.lfilter(b2, a, diameter))
+    filteredDiameter3 = list(signal.lfilter(b3, a, diameter))
 
     # Plot Filtered Data
-    print(filteredDiameter)
+    print("filteredDiameter1: ", filteredDiameter1)
+    print("filteredDiameter2: ", filteredDiameter2)
+    print("filteredDiameter3: ", filteredDiameter3)
+
     plt.figure(1)
-    plt.plot(filteredDiameter[NumToExclude:])
+    plt.plot(filteredDiameter1[NumToExclude:])
+    plt.ylabel('pupil Diameter')
+
+    plt.figure(2)
+    plt.plot(filteredDiameter2[NumToExclude:])
+    plt.ylabel('pupil Diameter')
+
+    plt.figure(3)
+    plt.plot(filteredDiameter3[NumToExclude:])
     plt.ylabel('pupil Diameter')
 
     # Write to CSV
     f = open(CSVfileName, 'w')
     writer = csv.writer(f)
     writer.writerow(["Frame", "Diameter"])
-    for i in range(NumToExclude, len(filteredDiameter)):
-        writer.writerow([str(i+1), str(filteredDiameter[i])])
+    for i in range(NumToExclude, len(filteredDiameter1)):
+        writer.writerow([str(i+1), str(filteredDiameter1[i])])
     f.close()
 
     plt.show()
