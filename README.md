@@ -1,7 +1,7 @@
 # pupillometry - pupil-detection
 This branch contais files for performing pupil size detection on pre-recorded videos
 
-PupilDetection_V1.py: main file for performing pupil size detection
+PupilDetection_V1.py: main file for performing pupil size detection - based on this article: https://tech.paayi.com/pupil-detection-in-pyhton 
 
 haarcascae_eye.xml: pre-trained model for detecting eye location in PupilDetection_V1.py
 
